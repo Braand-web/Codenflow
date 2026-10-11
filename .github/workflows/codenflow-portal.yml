@@ -1,0 +1,26 @@
+name: Coden flow portal
+on:
+  push:
+    branches: [main]
+    paths: ['saas/**', 'Dockerfile', 'railway.toml', '.github/workflows/codenflow-portal.yml']
+  pull_request:
+    paths: ['saas/**', 'Dockerfile', 'railway.toml', '.github/workflows/codenflow-portal.yml']
+permissions:
+  contents: read
+jobs:
+  portal:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: saas
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+          cache: npm
+          cache-dependency-path: saas/package-lock.json
+      - run: npm ci --ignore-scripts --no-audit --no-fund
+      - run: npm run check
+      - run: npm run test
+      - run: npm run build

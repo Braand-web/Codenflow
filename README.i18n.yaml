@@ -1,0 +1,19 @@
+# Bilingual-pair consistency record for README.md (docs/i18n/README.md): per heading
+# section, a hash of its English and Chinese blocks outside code blocks and generated regions.
+# After editing either side, bring the other along and re-record with:
+#   pnpm run verify-translation-pairing --write README.md
+/coden-flow:
+  en: 29b37e7a4306bf77
+  zh: ca70742be1257e6c
+/coden-flow/current-capabilities:
+  en: 380ef754eae5ea2b
+  zh: a31334e180232299
+/coden-flow/run:
+  en: 8af079cb620756b7
+  zh: 9c2716a86b6eecaf
+/coden-flow/development:
+  en: 1fe4cf53f8fa0b8c
+  zh: aee3c734fd3b4eac
+/coden-flow/credits-and-license:
+  en: 08bcbc69e39f1aee
+  zh: b4bc58f1a888f915
