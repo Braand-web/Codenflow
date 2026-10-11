@@ -2,29 +2,30 @@
 
 English | [中文](README.zh.md)
 
-Coden flow is a SaaS project for creating with AI. This repository includes the imported agent engine and a dedicated account portal.
+Coden flow is the branded web workbench built from the imported agent engine.
 
 ## Current capabilities
 
-The [portal](saas/README.md) provides Supabase registration, login, password recovery and private project briefs. Its isolated profile exposes no host execution capabilities. Hosted AI execution, user API key storage, usage credits and payments are still under development.
+The product opens directly into the original Coden flow agent interface. It includes chat sessions, workspaces, tools and model settings.
 
 ## Run
 
 <a id="run-from-source"></a>
 
-For the account portal, follow the [portal setup](saas/README.md). For the local agent interface, install Node 24 and run:
+Install Node 24 and run:
 
 ```sh
 pnpm install --frozen-lockfile
-pnpm run build
-pnpm run start:web
+pnpm run build:lib
+pnpm run build:web
+pnpm run start:web -- --no-open
 ```
 
-The local agent uses `http://127.0.0.1:3080`; the account portal uses `http://127.0.0.1:3090`. Hosted configuration is declared in `Dockerfile` and `railway.toml`.
+Open the authenticated URL printed by `dsh web`. Railway stores the runtime home at `/data`; attach a persistent volume there before using hosted sessions or files. The Web interface is a trusted workbench and uses DSH browser-session authentication.
 
 ## Development
 
-Read the [architecture](docs/architecture.md) and [contributor guide](CONTRIBUTING.md) for the plugin engine. Changes to the account portal live under `saas/`.
+Read the [architecture](docs/architecture.md) and [contributor guide](CONTRIBUTING.md) for the plugin engine.
 
 ## Credits and license
 

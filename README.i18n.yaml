@@ -3,17 +3,17 @@
 # After editing either side, bring the other along and re-record with:
 #   pnpm run verify-translation-pairing --write README.md
 /coden-flow:
-  en: 29b37e7a4306bf77
-  zh: ca70742be1257e6c
+  en: 508fbdf8763e3042
+  zh: 1d3114bcc2e6c750
 /coden-flow/current-capabilities:
-  en: 380ef754eae5ea2b
-  zh: a31334e180232299
+  en: dea891a5964e94be
+  zh: 8ab06a9fbc65dbaa
 /coden-flow/run:
-  en: 8af079cb620756b7
-  zh: 9c2716a86b6eecaf
+  en: eec9abbca952a464
+  zh: 2891dd5b106fce09
 /coden-flow/development:
-  en: 1fe4cf53f8fa0b8c
-  zh: aee3c734fd3b4eac
+  en: 22aabdfc5726eced
+  zh: 05f0adcc7d048398
 /coden-flow/credits-and-license:
   en: 08bcbc69e39f1aee
   zh: b4bc58f1a888f915

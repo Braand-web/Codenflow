@@ -1,0 +1,3 @@
+- insert:
+    - id: codenflow-health
+      name: /app/infra/codenflow-health.mjs

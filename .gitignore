@@ -9,6 +9,8 @@ lib/
 pnpm-debug.log
 .pnpm-store/
 .cache/
+.runtime/
+saas/
 examples/*/*.jsonl
 .storages/
 .sessions/
@@ -46,6 +48,4 @@ apps/web/dist/
 worktrees/
 .agents/worktrees/
 .typert-*/
-saas/dist/
-saas/.runtime/
 native/system/test/bin/
