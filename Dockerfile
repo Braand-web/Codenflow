@@ -11,6 +11,5 @@ RUN DSH_CLIENT_COMMIT_HASH="$RAILWAY_GIT_COMMIT_SHA" pnpm run build:lib && DSH_C
 
 ENV NODE_ENV=production DSH_HOME=/data PORT=8080
 RUN mkdir -p /data && chown node:node /data
-USER node
 EXPOSE 8080
-CMD ["node", "start-original-web.mjs"]
+CMD ["node", "infra/container-entrypoint.mjs"]
