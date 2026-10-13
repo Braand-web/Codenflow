@@ -2,6 +2,10 @@
   config:
     documentsDirectory: /data
 
+- id: connection
+  config:
+    cookieMaxAgeDays: 3650
+
 - insert:
     - id: codenflow-health
       name: /app/infra/codenflow-health.mjs

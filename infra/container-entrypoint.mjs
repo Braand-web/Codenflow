@@ -21,4 +21,8 @@ if (process.getuid() !== 1000 || process.getgid() !== 1000) {
 }
 
 process.env.HOME = '/home/node'
-await import('../start-original-web.mjs')
+if (process.env.CODENFLOW_GATEWAY === 'true') {
+  await import('./gateway/server.mjs')
+} else {
+  await import('../start-original-web.mjs')
+}

@@ -1,0 +1,14 @@
+{
+  "name": "codenflow-gateway",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "start": "node server.mjs",
+    "test": "node --test tests/*.test.mjs"
+  },
+  "dependencies": {
+    "@supabase/supabase-js": "2.117.3",
+    "e2b": "2.55.0",
+    "http-proxy-3": "2.0.1"
+  }
+}
