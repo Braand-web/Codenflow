@@ -7,6 +7,20 @@ export const LEASE_SECONDS = 900
 // Reserve the documented two-minute auto-pause retry window as well.
 export const CHARGED_SECONDS = LEASE_SECONDS + 120
 
+/**
+ * Forward requests and lease renewals after the runtime has finished preparing.
+ * @param {() => object | undefined} resolve Return the prepared runtime service.
+ * @returns {object} The gateway's request and renewal adapter.
+ */
+export function deferredRuntime(resolve) {
+  const current = () => {
+    const runtime = resolve()
+    if (!runtime) throw new Error('TEMPLATE_NOT_READY')
+    return runtime
+  }
+  return { get: id => current().get(id), renew: id => current().renew(id) }
+}
+
 /** Resolve only server-owned tenant mappings. Never accepts a client sandbox ID. */
 export function runtimeService(store, template, { sdk = Sandbox, limit = 36000, clock = Date.now, fetcher = fetch } = {}) {
   const pending = new Map()

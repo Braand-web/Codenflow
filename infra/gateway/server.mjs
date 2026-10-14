@@ -2,7 +2,7 @@
 import { resolve } from 'node:path'
 import { openStore } from './store.mjs'
 import { authService } from './auth.mjs'
-import { runtimeService } from './runtime.mjs'
+import { runtimeService, deferredRuntime } from './runtime.mjs'
 import { createGateway } from './app.mjs'
 import { prepareTemplate } from './template.mjs'
 
@@ -17,10 +17,7 @@ const store = openStore(directory)
 const auth = authService(process.env.SUPABASE_URL, process.env.SUPABASE_PUBLISHABLE_KEY, store, origin)
 let runtime
 let templateStatus = 'preparing'
-const gateway = createGateway({ auth, origin, readiness: () => templateStatus, runtime: { get: id => {
-  if (!runtime) throw new Error('TEMPLATE_NOT_READY')
-  return runtime.get(id)
-} } })
+const gateway = createGateway({ auth, origin, readiness: () => templateStatus, runtime: deferredRuntime(() => runtime) })
 gateway.server.listen(Number(process.env.PORT ?? 8080), '0.0.0.0', () => console.log('codenflow_gateway_listening'))
 try {
   runtime = runtimeService(store, process.env.CODENFLOW_E2B_TEMPLATE ?? await prepareTemplate(directory))

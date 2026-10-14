@@ -4,10 +4,11 @@ import { mkdtemp, rm } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { createServer, request } from 'node:http'
+import { once } from 'node:events'
 import { openStore } from '../store.mjs'
 import { createGateway, backendHeaders } from '../app.mjs'
 import { sessionId, sessionCookie } from '../auth.mjs'
-import { runtimeService, CHARGED_SECONDS } from '../runtime.mjs'
+import { runtimeService, deferredRuntime, CHARGED_SECONDS } from '../runtime.mjs'
 
 test('sessions, ownership and consumed budget survive reopening', async t => {
   const directory = await mkdtemp(join(tmpdir(), 'codenflow-store-'))
@@ -130,6 +131,51 @@ test('signup confirmation page and failed template state remain recoverable', as
   assert.equal(unavailable.status, 503)
   assert.match(await unavailable.text(), /service de création rencontre un problème/)
   assert.equal((await call('/health')).status, 200)
+})
+
+test('an open response renews the prepared runtime and continues forwarding', async t => {
+  let backendResponse
+  const backend = createServer((req, res) => {
+    backendResponse = res
+    res.write('started')
+  })
+  const target = await listen(backend)
+  t.after(() => new Promise(resolve => { backend.closeAllConnections(); backend.close(resolve) }))
+  let renewals = 0
+  const runtime = deferredRuntime(() => ({
+    async get(id) { assert.equal(id, 'alice'); return { target, headers: {} } },
+    async renew(id) { assert.equal(id, 'alice'); renewals++ },
+  }))
+  const gateway = createGateway({
+    auth: { async user(id) { return id === 'alice' ? { id } : undefined } },
+    origin: 'http://127.0.0.1', runtime,
+  })
+  const address = await listen(gateway.server)
+  t.after(() => gateway.close())
+  t.mock.timers.enable({ apis: ['setInterval'] })
+  try {
+    const response = await new Promise((resolve, reject) => {
+      const req = request(address + '/stream', { headers: { host: '127.0.0.1', cookie: 'codenflow-session=alice' } }, res => {
+        res.once('error', reject)
+        res.once('data', () => resolve(res))
+      })
+      req.once('error', reject)
+      req.end()
+    })
+    t.mock.timers.tick(2 * 60 * 1000)
+    assert.equal(renewals, 1)
+    assert.equal(response.destroyed, false)
+    const nextChunk = once(response, 'data')
+    backendResponse.write('still-active')
+    assert.equal((await nextChunk)[0].toString(), 'still-active')
+    const ended = once(response, 'end')
+    backendResponse.end()
+    await ended
+    t.mock.timers.tick(2 * 60 * 1000)
+    assert.equal(renewals, 1)
+  } finally {
+    t.mock.timers.reset()
+  }
 })
 
 test('sandbox admission coalesces startup, preserves ownership and stops at prepaid quota', async () => {
