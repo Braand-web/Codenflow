@@ -3,5 +3,5 @@
 # After editing either side, bring the other along and re-record with:
 #   pnpm run verify-translation-pairing --write infra/gateway/README.md
 /coden-flow-gateway:
-  en: 792d73f4980ce467
-  zh: 83ccdbaab7bab410
+  en: 13b5aff3509fba09
+  zh: f5edebc1812ae69a

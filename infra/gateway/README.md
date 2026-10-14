@@ -10,6 +10,8 @@ Authentication pages use `Referrer-Policy: same-origin` so browser form posts re
 
 The E2B project has a $2 usage limit. The gateway reserves 1,020 seconds for each 900-second sandbox lease and stops admitting new compute when its durable monthly counter reaches 36,000 seconds. At the documented 2 vCPU and 4 GiB E2B rates this reserves about $1.66/month for runtime use; E2B's project limit covers builds and other usage too. Railway uses the existing service and data volume; do not add replicas or a second volume.
 
+Failed template builds remain recorded for operator repair; Railway logs include the build and template identifiers, the failure message and step, and the last 20 related log entries, with each text limited to 1,000 characters.
+
 ```sh
 npm ci --prefix infra/gateway
 npm test --prefix infra/gateway
