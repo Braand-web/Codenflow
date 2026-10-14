@@ -12,6 +12,8 @@ The E2B project has a $2 usage limit. The gateway reserves 1,020 seconds for eac
 
 Failed template builds remain recorded for operator repair; Railway logs include the build and template identifiers, the failure message and step, and the last 20 related log entries, with each text limited to 1,000 characters.
 
+The template uses the repository's checked production-library build (`compile-referenced-projects.ts libraries`) and the Web build, excluding aggregate test/script compilation from the 4 GiB runtime image build. A hash of the pinned source, image, commands and resources names its durable `template-build.<hash>.json` record. A corrected recipe starts one new build and preserves older records, including `template-build.json`; gateway restarts resume the same build and never retry a failed recipe automatically. Ready environments use an immutable `templateId:buildId` reference.
+
 ```sh
 npm ci --prefix infra/gateway
 npm test --prefix infra/gateway

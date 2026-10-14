@@ -3,14 +3,14 @@ import assert from 'node:assert/strict'
 import { mkdtemp, readFile, rm, writeFile } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
-import { prepareTemplate } from '../template.mjs'
+import { prepareTemplate, TEMPLATE_RECORD, TEMPLATE_RECIPE, TEMPLATE_RECIPE_ID } from '../template.mjs'
 
 test('an existing failed build logs bounded details without starting another build', async t => {
   const directory = await mkdtemp(join(tmpdir(), 'codenflow-template-'))
   t.after(() => rm(directory, { recursive: true, force: true }))
   const build = { templateId: 'template-id', buildId: 'failed-build-id' }
   const record = JSON.stringify(build)
-  const path = join(directory, 'template-build.json')
+  const path = join(directory, TEMPLATE_RECORD)
   await writeFile(path, record)
   let constructions = 0
   let reads = 0
@@ -51,4 +51,41 @@ test('an existing failed build logs bounded details without starting another bui
     assert.match(diagnostic.reason.logEntries.at(-1).message, /^entry-24:/)
     assert.ok(diagnostic.reason.logEntries.every(entry => entry.level === 'error' && entry.message.length === 1000))
   }
+})
+
+test('a corrected recipe preserves the legacy failure, resumes once and pins the ready build', async t => {
+  const directory = await mkdtemp(join(tmpdir(), 'codenflow-template-'))
+  t.after(() => rm(directory, { recursive: true, force: true }))
+  const legacy = JSON.stringify({ templateId: 'old-template', buildId: 'old-failed-build' })
+  const legacyPath = join(directory, 'template-build.json')
+  await writeFile(legacyPath, legacy)
+  const build = { templateId: 'new-template', buildId: 'new-build' }
+  const commands = []
+  let constructions = 0
+  let status = 'building'
+  const builder = {
+    fromImage(image) { assert.equal(image, TEMPLATE_RECIPE.image); return this },
+    runCmd(command, options) { commands.push(command); assert.deepEqual(options, { user: 'root' }); return this },
+  }
+  const sdk = Object.assign(() => builder, {
+    async buildInBackground(template, name, resources) {
+      constructions++
+      assert.equal(template, builder)
+      assert.equal(name, `codenflow-${TEMPLATE_RECIPE_ID}`)
+      assert.deepEqual(resources, { cpuCount: 2, memoryMB: 4096 })
+      return build
+    },
+    async getBuildStatus(received) { assert.deepEqual(received, build); return { status } },
+  })
+  await assert.rejects(prepareTemplate(directory, { sdk, sleep: async () => { throw new Error('simulated gateway restart') } }), /simulated gateway restart/)
+  assert.equal(await readFile(legacyPath, 'utf8'), legacy)
+  assert.deepEqual(JSON.parse(await readFile(join(directory, TEMPLATE_RECORD), 'utf8')), build)
+  assert.deepEqual(commands, TEMPLATE_RECIPE.commands)
+  assert.match(commands.at(-1), /compile-referenced-projects\.ts libraries && pnpm run build:web/)
+  assert.doesNotMatch(commands.at(-1), /pnpm run build:lib|--noCheck/)
+  status = 'ready'
+  assert.equal(await prepareTemplate(directory, { sdk }), 'new-template:new-build')
+  assert.equal(await prepareTemplate(directory, { sdk }), 'new-template:new-build')
+  assert.equal(constructions, 1)
+  assert.equal(await readFile(legacyPath, 'utf8'), legacy)
 })

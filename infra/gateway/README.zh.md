@@ -12,6 +12,8 @@ E2B 项目的用量上限为 2 美元。网关为每次 900 秒的沙箱租期�
 
 失败的模板构建仍保留记录，等待运维人员修复；Railway 日志包含构建和模板标识符、失败消息与步骤，以及最后 20 条相关日志，每段文本最多保留 1,000 个字符。
 
+模板使用仓库中经过类型检查的生产库构建（`compile-referenced-projects.ts libraries`）与 Web 构建，不在 4 GiB 运行时镜像构建期间编译测试和脚本的聚合程序。固定源码、镜像、命令与资源配置的哈希值用于命名持久化的 `template-build.<hash>.json` 记录。修正后的构建配方启动一次新的构建，同时保留旧记录（包括 `template-build.json`）；网关重启时恢复同一次构建，不会自动重试失败的配方。就绪环境使用不可变的 `templateId:buildId` 引用。
+
 ```sh
 npm ci --prefix infra/gateway
 npm test --prefix infra/gateway
