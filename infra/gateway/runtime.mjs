@@ -18,7 +18,7 @@ export function deferredRuntime(resolve) {
     if (!runtime) throw new Error('TEMPLATE_NOT_READY')
     return runtime
   }
-  return { get: id => current().get(id), renew: id => current().renew(id) }
+  return { get: id => current().get(id), renew: id => current().renew(id), isReady: id => current().isReady(id) }
 }
 
 /** Resolve only server-owned tenant mappings. Never accepts a client sandbox ID. */
@@ -84,6 +84,9 @@ export function runtimeService(store, template, { sdk = Sandbox, limit = 36000, 
     return result
   }
   return {
+    isReady(userId) {
+      return (active.get(userId)?.deadline ?? 0) > clock() + 180000
+    },
     async get(userId) {
       if (!pending.has(userId)) pending.set(userId, resolve(userId).finally(() => pending.delete(userId)))
       return pending.get(userId)

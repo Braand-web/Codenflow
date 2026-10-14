@@ -196,9 +196,12 @@ test('an open response renews the prepared runtime and continues forwarding', as
   t.after(() => new Promise(resolve => { backend.closeAllConnections(); backend.close(resolve) }))
   let renewals = 0
   const runtime = deferredRuntime(() => ({
+    isReady(id) { return id === 'alice' },
     async get(id) { assert.equal(id, 'alice'); return { target, headers: {} } },
     async renew(id) { assert.equal(id, 'alice'); renewals++ },
   }))
+  assert.equal(runtime.isReady('alice'), true)
+  assert.equal(runtime.isReady('bob'), false)
   const gateway = createGateway({
     auth: { async user(id) { return id === 'alice' ? { id } : undefined } },
     origin: 'http://127.0.0.1', runtime,
@@ -246,7 +249,10 @@ test('sandbox admission coalesces startup, preserves ownership and stops at prep
   } }
   const fetcher = async url => new URL(url).pathname === '/health' ? new Response('ok') : new Response(null, { status: 302, headers: { 'set-cookie': 'dsh=secret; HttpOnly' } })
   const runtime = runtimeService(store, 'template', { sdk, fetcher })
+  assert.equal(runtime.isReady('alice'), false)
   const [first, second] = await Promise.all([runtime.get('alice'), runtime.get('alice')])
+  assert.equal(runtime.isReady('alice'), true)
+  assert.equal(runtime.isReady('bob'), false)
   assert.equal(created, 1)
   assert.equal(first.target, second.target)
   assert.notEqual((await runtime.get('bob')).target, first.target)

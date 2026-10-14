@@ -14,3 +14,8 @@ export function authPage(signup = false, notice = '') {
 export function messagePage(title, message, signedIn = false) {
   return shell(title, `<h1>${escape(title)}</h1><p role="status">${escape(message)}</p><a class="back" href="/">Revenir à mon espace</a>${signedIn ? '<form action="/auth/logout" method="post"><button type="submit">Se déconnecter</button></form>' : ''}`)
 }
+
+/** Keep the signed-in user informed while the private runtime starts automatically. */
+export function startupPage() {
+  return shell('Ouverture de votre espace', `<h1>Ouverture de votre espace</h1><p id="startup-message" role="status" aria-live="polite">Nous préparons votre espace personnel. Il s’ouvrira automatiquement.</p><p id="startup-detail"><small>Préparation en cours…</small></p><button id="startup-retry" type="button" hidden>Réessayer</button><noscript><p>JavaScript est désactivé. <a href="/">Ouvrir mon espace</a></p></noscript><script nonce="<!--nonce-->" src="/auth/startup.js" defer></script>`)
+}

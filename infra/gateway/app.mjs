@@ -4,7 +4,7 @@ import { randomBytes } from 'node:crypto'
 import { readFileSync } from 'node:fs'
 import { createProxyServer } from 'http-proxy-3'
 import { sessionCookie, sessionId } from './auth.mjs'
-import { authPage, messagePage } from './pages.mjs'
+import { authPage, messagePage, startupPage } from './pages.mjs'
 
 const allowedHeaders = new Set(['accept', 'accept-language', 'content-type', 'content-length', 'range', 'if-none-match', 'if-modified-since', 'sec-websocket-key', 'sec-websocket-version', 'sec-websocket-protocol', 'sec-websocket-extensions', 'upgrade', 'connection'])
 
@@ -21,6 +21,11 @@ export function createGateway({ auth, runtime, origin, ready = () => true, readi
   const sockets = new Set()
   const attempts = new Map()
   const callbackScript = readFileSync(new URL('./callback.js', import.meta.url))
+  const startupScript = readFileSync(new URL('./startup.js', import.meta.url))
+  const readinessJson = (res, status, state) => {
+    res.writeHead(status, { 'content-type': 'application/json; charset=utf-8', 'cache-control': 'no-store', 'x-content-type-options': 'nosniff' })
+    res.end(JSON.stringify({ state }))
+  }
   const write = (res, status, html, headers = {}) => {
     const nonce = randomBytes(18).toString('base64')
     res.writeHead(status, { 'content-type': 'text/html; charset=utf-8', 'cache-control': 'no-store', 'x-content-type-options': 'nosniff', 'referrer-policy': 'same-origin', 'content-security-policy': `default-src 'none'; script-src 'nonce-${nonce}' 'self'; style-src 'unsafe-inline'; form-action 'self'; frame-ancestors 'none'; base-uri 'none'`, ...headers })
@@ -57,9 +62,9 @@ export function createGateway({ auth, runtime, origin, ready = () => true, readi
       if (url.pathname === '/health' && req.method === 'GET') return write(res, 200, 'ok')
       if (req.headers.host !== new URL(origin).host) return write(res, 421, '')
       if ((req.headers.origin && !validOrigin(req)) || !['GET', 'HEAD'].includes(req.method) && !validOrigin(req)) return write(res, 403, '')
-      if (url.pathname === '/auth/callback.js' && req.method === 'GET') {
+      if (['/auth/callback.js', '/auth/startup.js'].includes(url.pathname) && req.method === 'GET') {
         res.writeHead(200, { 'content-type': 'text/javascript; charset=utf-8', 'cache-control': 'no-store', 'x-content-type-options': 'nosniff', 'content-security-policy': "default-src 'none'" })
-        return res.end(callbackScript)
+        return res.end(url.pathname === '/auth/startup.js' ? startupScript : callbackScript)
       }
       const id = sessionId(req.headers.cookie, secure)
       if (url.pathname.startsWith('/auth/') && req.method === 'POST') {
@@ -109,6 +114,19 @@ export function createGateway({ auth, runtime, origin, ready = () => true, readi
         }
       }
       const user = await auth.user(id)
+      if (url.pathname === '/auth/readiness' && req.method === 'GET') {
+        if (!user) return readinessJson(res, 401, 'unauthorized')
+        const state = readiness()
+        if (state !== 'ready') return readinessJson(res, 200, state)
+        try {
+          // The authenticated subject is the only owner this request can start.
+          await runtime.get(user.id)
+          return readinessJson(res, 200, 'ready')
+        } catch (error) {
+          console.error('gateway_startup_failed', /^[A-Z_]+$/.test(error.message) ? error.message : error.name)
+          return readinessJson(res, 503, error.message === 'BUDGET_EXHAUSTED' ? 'quota' : 'failed')
+        }
+      }
       if (url.pathname === '/auth' || !user && url.pathname === '/') {
         if (req.method !== 'GET') return write(res, 405, '')
         return write(res, 200, user ? messagePage('Votre compte', 'Votre session est active.', true) : authPage(url.searchParams.get('mode') === 'signup'))
@@ -117,9 +135,11 @@ export function createGateway({ auth, runtime, origin, ready = () => true, readi
       const state = readiness()
       if (state !== 'ready') {
         const failed = state === 'failed'
+        if (req.method === 'GET' && url.pathname === '/') return write(res, 200, startupPage())
         return write(res, 503, messagePage(failed ? 'Service temporairement indisponible' : 'Espace en préparation', failed ? 'Le service de création rencontre un problème. Réessayez dans quelques instants.' : 'Votre environnement personnel démarre. Actualisez cette page dans quelques instants.'), { 'retry-after': failed ? '60' : '10' })
       }
       if (url.searchParams.has('token')) return redirect(res)
+      if (req.method === 'GET' && url.pathname === '/' && !runtime.isReady(user.id)) return write(res, 200, startupPage())
       const backend = await runtime.get(user.id)
       req.codenflowBackendTarget = backend.target
       req.headers = backendHeaders(req.headers, backend)

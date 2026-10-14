@@ -8,6 +8,8 @@ The image needs `SUPABASE_URL`, `SUPABASE_PUBLISHABLE_KEY`, `E2B_API_KEY`, and `
 
 Authentication pages use `Referrer-Policy: same-origin` so browser form posts retain their origin; validation and sign-in/signup failures return the form with HTTP 200 and no session cookie, while rejected origins still return HTTP 403.
 
+Signed-in users see a waiting view with HTTP 200 during initial preparation or a cold start. Its script checks the authenticated `/auth/readiness` route and opens the original workbench automatically once the current user's private runtime is ready. Polls do not overlap; failures stop polling and offer a retry, and expired sessions return to sign-in. The route accepts no client-selected owner or sandbox and applies the existing execution quota.
+
 The E2B project has a $2 usage limit. The gateway reserves 1,020 seconds for each 900-second sandbox lease and stops admitting new compute when its durable monthly counter reaches 36,000 seconds. At the documented 2 vCPU and 4 GiB E2B rates this reserves about $1.66/month for runtime use; E2B's project limit covers builds and other usage too. Railway uses the existing service and data volume; do not add replicas or a second volume.
 
 Failed template builds remain recorded for operator repair; Railway logs include the build and template identifiers, the failure message and step, and the last 20 related log entries, with each text limited to 1,000 characters.
