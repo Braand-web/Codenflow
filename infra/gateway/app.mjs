@@ -23,7 +23,7 @@ export function createGateway({ auth, runtime, origin, ready = () => true, readi
   const callbackScript = readFileSync(new URL('./callback.js', import.meta.url))
   const write = (res, status, html, headers = {}) => {
     const nonce = randomBytes(18).toString('base64')
-    res.writeHead(status, { 'content-type': 'text/html; charset=utf-8', 'cache-control': 'no-store', 'x-content-type-options': 'nosniff', 'referrer-policy': 'no-referrer', 'content-security-policy': `default-src 'none'; script-src 'nonce-${nonce}' 'self'; style-src 'unsafe-inline'; form-action 'self'; frame-ancestors 'none'; base-uri 'none'`, ...headers })
+    res.writeHead(status, { 'content-type': 'text/html; charset=utf-8', 'cache-control': 'no-store', 'x-content-type-options': 'nosniff', 'referrer-policy': 'same-origin', 'content-security-policy': `default-src 'none'; script-src 'nonce-${nonce}' 'self'; style-src 'unsafe-inline'; form-action 'self'; frame-ancestors 'none'; base-uri 'none'`, ...headers })
     res.end(html.replaceAll('<!--nonce-->', nonce))
   }
   const redirect = (res, headers = {}) => write(res, 303, '', { location: '/', ...headers })
@@ -94,7 +94,7 @@ export function createGateway({ auth, runtime, origin, ready = () => true, readi
         const email = form.get('email')?.trim()
         const password = form.get('password')
         const signup = url.pathname === '/auth/signup'
-        if (!email || email.length > 254 || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email) || !password || password.length > 1024 || signup && password.length < 12) return write(res, 400, authPage(signup, 'Vérifiez votre adresse email et votre mot de passe.'))
+        if (!email || email.length > 254 || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email) || !password || password.length > 1024 || signup && password.length < 12) return write(res, 200, authPage(signup, 'Vérifiez votre adresse email et votre mot de passe.'))
         try {
           if (signup) {
             const newId = await auth.signup(email, password)
@@ -105,7 +105,7 @@ export function createGateway({ auth, runtime, origin, ready = () => true, readi
           auth.logout(id)
           return redirect(res, { 'set-cookie': sessionCookie(newId, secure) })
         } catch (error) {
-          return write(res, 400, authPage(signup, signup ? 'Inscription indisponible. Réessayez plus tard.' : 'Connexion impossible. Vérifiez vos identifiants et la confirmation de votre email.'))
+          return write(res, 200, authPage(signup, signup ? 'Inscription indisponible. Réessayez plus tard.' : 'Connexion impossible. Vérifiez vos identifiants et la confirmation de votre email.'))
         }
       }
       const user = await auth.user(id)

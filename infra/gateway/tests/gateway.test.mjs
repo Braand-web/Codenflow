@@ -133,6 +133,59 @@ test('signup confirmation page and failed template state remain recoverable', as
   assert.equal((await call('/health')).status, 200)
 })
 
+test('auth forms preserve their origin and display failures without granting a session', async t => {
+  let attempts = 0
+  const gateway = createGateway({
+    auth: {
+      async user() { return undefined },
+      async login() { attempts++; throw new Error('INVALID_LOGIN') },
+      async signup() { attempts++; throw new Error('SIGNUP_FAILED') },
+    },
+    origin: 'http://127.0.0.1',
+    runtime: { async get() { throw new Error('must not start a tenant') } },
+  })
+  const address = await listen(gateway.server)
+  t.after(() => gateway.close())
+  const call = (path, options = {}) => new Promise((resolve, reject) => {
+    const req = request(address + path, { ...options, headers: { host: '127.0.0.1', ...options.headers } }, response => {
+      const chunks = []
+      response.on('data', chunk => chunks.push(chunk))
+      response.on('end', () => resolve(new Response(Buffer.concat(chunks), { status: response.statusCode, headers: response.headers })))
+    })
+    req.once('error', reject)
+    if (options.body) req.write(options.body)
+    req.end()
+  })
+  for (const path of ['/auth', '/auth?mode=signup']) {
+    const page = await call(path)
+    assert.equal(page.status, 200)
+    assert.equal(page.headers.get('referrer-policy'), 'same-origin')
+    assert.match(await page.text(), /<form method="post" action="\/auth\//)
+  }
+  const headers = { origin: 'http://127.0.0.1', 'content-type': 'application/x-www-form-urlencoded' }
+  for (const [path, notice] of [['/auth/login', /Connexion impossible/], ['/auth/signup', /Inscription indisponible/]]) {
+    const response = await call(path, { method: 'POST', headers, body: 'email=person%40example.invalid&password=long-enough-password' })
+    assert.equal(response.status, 200)
+    assert.equal(response.headers.get('set-cookie'), null)
+    assert.match(await response.text(), notice)
+  }
+  const invalid = await call('/auth/signup', { method: 'POST', headers, body: 'email=bad&password=short' })
+  assert.equal(invalid.status, 200)
+  assert.equal(invalid.headers.get('set-cookie'), null)
+  assert.match(await invalid.text(), /Vérifiez votre adresse email/)
+  for (const rejectedOrigin of [undefined, 'null', 'https://outside.invalid']) {
+    const response = await call('/auth/signup', {
+      method: 'POST',
+      headers: { 'content-type': headers['content-type'], ...(rejectedOrigin === undefined ? {} : { origin: rejectedOrigin }) },
+      body: 'email=person%40example.invalid&password=long-enough-password',
+    })
+    assert.equal(response.status, 403)
+    assert.equal(response.headers.get('set-cookie'), null)
+  }
+  assert.equal(attempts, 2)
+  assert.equal((await call('/api/settings')).status, 401)
+})
+
 test('an open response renews the prepared runtime and continues forwarding', async t => {
   let backendResponse
   const backend = createServer((req, res) => {

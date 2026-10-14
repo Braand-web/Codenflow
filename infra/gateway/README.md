@@ -6,6 +6,8 @@ Railway serves the original Coden flow workbench through this gateway. Supabase 
 
 The image needs `SUPABASE_URL`, `SUPABASE_PUBLISHABLE_KEY`, `E2B_API_KEY`, and `RAILWAY_PUBLIC_DOMAIN`. The configured Supabase URL must be `https://thtknxjmzpceqwegoobj.supabase.co`. Keep the Supabase URL allow list configured to include the Railway root URL so confirmation emails can return to Coden flow. No Supabase service key or FAL/OpenRouter master key enters an E2B environment.
 
+Authentication pages use `Referrer-Policy: same-origin` so browser form posts retain their origin; validation and sign-in/signup failures return the form with HTTP 200 and no session cookie, while rejected origins still return HTTP 403.
+
 The E2B project has a $2 usage limit. The gateway reserves 1,020 seconds for each 900-second sandbox lease and stops admitting new compute when its durable monthly counter reaches 36,000 seconds. At the documented 2 vCPU and 4 GiB E2B rates this reserves about $1.66/month for runtime use; E2B's project limit covers builds and other usage too. Railway uses the existing service and data volume; do not add replicas or a second volume.
 
 ```sh
